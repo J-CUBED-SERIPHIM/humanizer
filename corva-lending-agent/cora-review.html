@@ -1,0 +1,811 @@
+<title>Cora Conversation Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: a proof desk. A slim rail of numbered scenarios on the left, one
+   conversation at a time in the middle, the verdict controls directly under the transcript. */
+:root {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --surface-2: #f5f8f9;
+  --ink: #12202a;
+  --muted: #53656f;
+  --line: #d4dde2;
+  --accent: #1f4e8c;
+  --on-accent: #ffffff;
+  --accent-soft: #e2ecf7;
+  --ok: #17703f;
+  --ok-soft: #dcf1e4;
+  --warn: #a8420a;
+  --warn-soft: #fbe8d4;
+  --b-bubble: #e6ecef;
+  --focus: #1f4e8c;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d151b;
+    --surface: #152028;
+    --surface-2: #1a2a33;
+    --ink: #e6eef2;
+    --muted: #93a4ae;
+    --line: #2a3b45;
+    --accent: #7fb0ea;
+    --on-accent: #0a1620;
+    --accent-soft: #1d3249;
+    --ok: #52c88e;
+    --ok-soft: #16362a;
+    --warn: #f2a762;
+    --warn-soft: #3a2916;
+    --b-bubble: #21303a;
+    --focus: #7fb0ea;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d151b;
+  --surface: #152028;
+  --surface-2: #1a2a33;
+  --ink: #e6eef2;
+  --muted: #93a4ae;
+  --line: #2a3b45;
+  --accent: #7fb0ea;
+  --on-accent: #0a1620;
+  --accent-soft: #1d3249;
+  --ok: #52c88e;
+  --ok-soft: #16362a;
+  --warn: #f2a762;
+  --warn-soft: #3a2916;
+  --b-bubble: #21303a;
+  --focus: #7fb0ea;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; padding-inline: 16px; padding-block: 24px 64px; }
+button, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+
+/* Header */
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 4.6vw, 42px); line-height: 1.05; letter-spacing: -0.02em; margin: 6px 0 8px; text-wrap: balance; }
+.lede { max-width: 66ch; color: var(--muted); margin: 0; }
+.top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px); gap: 24px; align-items: end; }
+.progress { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface-2); outline: 1px solid var(--line); }
+.bar i { display: block; height: 100%; }
+.bar .a { background: var(--ok); }
+.bar .u { background: var(--warn); }
+.counts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.counts b { font-weight: 600; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.spacer { flex: 1; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 12px; font-size: 14px; font-weight: 500; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.banner { background: var(--warn-soft); color: var(--ink); border: 1px solid var(--warn); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+.banner[hidden] { display: none; }
+
+/* Shell */
+.app { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 24px; align-items: start; }
+.rail { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 8px 12px; }
+.rail h3 { font-family: var(--font-mono); font-weight: 500; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 14px 8px 6px; }
+.rail h3:first-child { margin-top: 6px; }
+.item { display: grid; grid-template-columns: 26px minmax(0, 1fr) 14px; gap: 6px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-radius: 6px; padding: 7px 8px; font-size: 14px; line-height: 1.3; }
+.item:hover { background: var(--surface-2); }
+.item[aria-current="true"] { background: var(--accent-soft); font-weight: 600; }
+.item .n { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dot { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--muted); }
+.dot.approved { background: var(--ok); border-color: var(--ok); }
+.dot.update { background: var(--warn); border-color: var(--warn); }
+.navtoggle { display: none; }
+
+/* Scenario */
+.pane { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.sc-head { display: flex; flex-direction: column; gap: 10px; }
+.sc-head h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 3.2vw, 30px); line-height: 1.12; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-family: var(--font-mono); font-size: 12px; border: 1px solid var(--line); background: var(--surface); border-radius: 4px; padding: 2px 8px; }
+.tag.persona { background: var(--accent-soft); border-color: transparent; }
+.tag.test { color: var(--muted); }
+.ctx { font-size: 14px; color: var(--muted); margin: 0; }
+.ctx b { color: var(--ink); font-weight: 600; }
+.thread { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+.chrome { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.row { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.row.b { align-items: flex-start; }
+.row.c { align-items: flex-end; }
+.who { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.bubble { max-width: min(560px, 82%); padding: 10px 13px; border-radius: 14px; overflow-wrap: anywhere; }
+.row.b .bubble { background: var(--b-bubble); border-bottom-left-radius: 4px; }
+.row.c .bubble { background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 4px; }
+.var { font-family: var(--font-mono); font-size: 0.86em; background: rgba(127, 127, 127, 0.22); border-radius: 3px; padding: 0 4px; }
+.redact { font-family: var(--font-mono); font-size: 0.86em; background: var(--ink); color: var(--bg); border-radius: 3px; padding: 0 5px; }
+.under { max-width: min(560px, 82%); display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.behind { font-family: var(--font-mono); font-size: 12px; line-height: 1.45; color: var(--muted); background: var(--surface-2); border: 1px dashed var(--line); border-radius: 6px; padding: 6px 9px; }
+.behind b { color: var(--ink); font-weight: 500; }
+.link { background: none; border: 0; padding: 0; font-size: 12px; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.mnote { width: 100%; background: var(--warn-soft); border-radius: 8px; padding: 8px 10px; font-size: 14px; display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; }
+.mnote span { overflow-wrap: anywhere; }
+.composer { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+textarea { width: 100%; min-height: 72px; resize: vertical; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; line-height: 1.45; }
+.composer .acts { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Verdict */
+.verdict { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.verdict h3 { margin: 0; font-family: var(--font-display); font-size: 18px; letter-spacing: -0.01em; }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.seg button { border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; padding: 9px 16px; font-weight: 600; font-size: 14px; }
+.seg button.ok[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: var(--bg); }
+.seg button.warn[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: var(--bg); }
+.seg button[disabled] { opacity: 0.5; cursor: not-allowed; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.notes { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.notes li { background: var(--surface-2); border-radius: 8px; padding: 9px 11px; display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; font-size: 14px; }
+.notes small { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+.pager { display: flex; justify-content: space-between; gap: 10px; }
+
+/* Summary */
+.summary { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.summary[hidden] { display: none; }
+.summary textarea { min-height: 220px; font-family: var(--font-mono); font-size: 13px; }
+
+@media (max-width: 900px) {
+  .top { grid-template-columns: minmax(0, 1fr); }
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; max-height: 60vh; display: none; }
+  .rail.open { display: block; }
+  .navtoggle { display: inline-block; }
+  .bubble, .under { max-width: 92%; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Corva Lending · Pre-launch test</div>
+      <h1>Cora Conversation Review</h1>
+      <p class="lede">Twenty-eight simulated conversations, each written from Cora's current spec and the buttoned-up, no-dash voice you approved. Read one, then approve it or mark it for changes and say what to fix. You can also comment on any single Cora message. When you are done, tell Claude to read your review and the changes get applied to the spec.</p>
+    </div>
+    <div class="progress" aria-live="polite">
+      <div class="bar" id="bar" role="img" aria-label="Review progress"></div>
+      <div class="counts" id="counts"></div>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <div class="toolbar" id="filters">
+    <button class="chip navtoggle" id="navtoggle" type="button">All scenarios</button>
+    <button class="chip" type="button" data-f="all" aria-pressed="true">All</button>
+    <button class="chip" type="button" data-f="todo" aria-pressed="false">To review</button>
+    <button class="chip" type="button" data-f="update" aria-pressed="false">Needs update</button>
+    <button class="chip" type="button" data-f="approved" aria-pressed="false">Approved</button>
+    <span class="spacer"></span>
+    <button class="btn" type="button" id="sumbtn">Feedback summary</button>
+  </div>
+
+  <section class="summary" id="summary" hidden aria-label="Feedback summary">
+    <p class="hint">A plain-text copy of everything you flagged. Paste it to Claude, or just say "read my review" and Claude will pull it directly.</p>
+    <textarea id="sumtext" readonly></textarea>
+    <div class="acts"><button class="btn primary" type="button" id="sumcopy">Copy summary</button></div>
+  </section>
+
+  <div class="app">
+    <nav class="rail" id="rail" aria-label="Scenarios"></nav>
+    <main class="pane" id="pane"></main>
+  </div>
+</div>
+
+<script>
+/* ---------- Scenario data ---------- */
+var SC = [
+{ id: 1, cat: "Self-employed income", title: "Contractor buying a first primary home", persona: "Self-Employed Owner", purpose: "Purchase", channel: "Website chat", ctx: "Landing page for bank statement loans. No prior contact.", tests: ["Bank statement lane", "Write-off explanation", "Rate boundary", "LO booking"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. Are you looking to buy, refinance, or take cash out?"],
+ ["b", "Buying. I run a small contracting company and I keep hearing self-employed people have a hard time getting a mortgage."],
+ ["c", "It can be harder at a traditional bank, but there are programs built for it. The usual problem is that tax returns show income after write-offs, so a bank sees a smaller number than you actually earn. Does most of your income run through one business account?", "Borrower Profiler: leaning Self-Employed Owner, confidence 0.7. Likely lane: bank statement."],
+ ["b", "Yes, one main account."],
+ ["c", "That helps. A bank statement program qualifies you from your deposits instead of your tax returns. Is this for a primary home?"],
+ ["b", "Primary. We've outgrown our rental and want something that's ours."],
+ ["c", "That makes sense. The most useful next step is a short call with one of our loan officers, who can look at your actual numbers and tell you where you stand. I can set that up for tomorrow at 10 or Thursday at 2. Which works better?"],
+ ["b", "Thursday. What rate would I get?"],
+ ["c", "Rate depends on your full file and it changes daily, so any number from me would only be a guess. The loan officer will give you a current one on the call. I've put you down for Thursday at 2 with [LO_NAME] (NMLS [LO_NMLS]). Corva Lending is an Equal Housing Lender.", "Compliance Monitor: PASS. Rate request redirected. Booking Agent: contact form with SMS consent line shown before confirming. Pipeline: stage moves to LO Consult Booked."]
+]},
+{ id: 2, cat: "Self-employed income", title: "Stylist, turned down twice, guarded", persona: "Self-Employed Owner (1099)", purpose: "Purchase", channel: "SMS", ctx: "Web form lead, SMS opt-in verified.", tests: ["Empathy before pitch", "Trust and NMLS", "No outcome promises", "Secure data routing"], turns: [
+ ["c", "Hi Tanya, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)", "First outbound SMS: identity and opt-out language present (TCPA). Sent in 41 seconds."],
+ ["b", "Buy. I've been turned down twice already so I'm not getting my hopes up. I do hair, 1099."],
+ ["c", "I'm sorry, two turn-downs is frustrating, and it usually says more about the loan type than about you. Banks read tax returns, and after write-offs a stylist's income can look much smaller on paper than it is. Do most of your payments land in one account?"],
+ ["b", "Mostly one account, some Venmo."],
+ ["c", "Your main account is what a 1099 or bank statement program looks at instead of your returns. It qualifies you on how you actually get paid."],
+ ["b", "That's what the last guy said and then nothing happened. How do I know you're any different?"],
+ ["c", "That's fair. We're a licensed direct lender, NMLS [COMPANY_NMLS], and you can look us up on NMLS Consumer Access before you spend any time on us. I won't promise an outcome. A licensed loan officer looks at your real picture and tells you plainly whether it works, and if it doesn't, why. Would one conversation be worth it?"],
+ ["b", "ok. when"],
+ ["c", "I have [LO_NAME] Thursday at 11 or 2. Nothing sensitive needs to come through this thread. If it moves forward, that goes through a secure link. Which time?"],
+ ["b", "2"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Thursday at 2. I'll send a reminder Wednesday evening. Corva Lending is an Equal Housing Lender.", "Reminder scheduled for 6:30 PM local, inside the 8 AM to 9 PM send window."]
+]},
+{ id: 3, cat: "Self-employed income", title: "Business owner whose returns hide a profitable company", persona: "Self-Employed Owner (P&L)", purpose: "Purchase", channel: "Website chat", ctx: "Organic search visitor, no form filled yet.", tests: ["P&L program", "Declines to guess a requirement", "No eligibility call"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. What brings you in today?"],
+ ["b", "I own a landscaping company. My CPA says my tax returns look bad because of depreciation, but the business is profitable. I want to buy a home."],
+ ["c", "That's a common situation. Depreciation and other deductions can make a profitable business look weak on a tax return. There is a profit and loss program that qualifies you from a CPA-prepared P&L statement instead. Is the home for you to live in, or an investment?"],
+ ["b", "Live in."],
+ ["c", "Good. Whether your P&L fits is something a loan officer confirms once they see it. A short call can cover what documentation they would want and what to expect on timing. I have Wednesday at 9 or Friday at 1."],
+ ["b", "Can you tell me how many years in business I need?"],
+ ["c", "Requirements like time in business vary by program and depend on your file, so I don't want to give you a number that turns out wrong. The loan officer will give you the exact requirement. Wednesday or Friday?", "Knowledge Agent: no approved figure for time in business, so Cora declines to guess (missing-data rule)."],
+ ["b", "Friday"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Friday at 1. Corva Lending is an Equal Housing Lender, and nothing here is a commitment to lend."]
+]},
+{ id: 4, cat: "Self-employed income", title: "Rideshare, Etsy and freelance income, 14 months in", persona: "Self-Employed Owner (mixed)", purpose: "Purchase", channel: "SMS", ctx: "Instagram ad lead, SMS opt-in verified.", tests: ["Honest about uncertainty", "No approval or denial language", "Useful path if not ready"], turns: [
+ ["c", "Hi Jess, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)"],
+ ["b", "buy. I drive for rideshare and sell on Etsy and do some freelance design. my income is all over the place lol"],
+ ["c", "Mixed income is more common than people think. Programs generally look at how consistent your income is and how well it's documented. Is most of it deposited into the same account?"],
+ ["b", "yes. been doing it about 14 months"],
+ ["c", "Thanks, that helps me point you the right way. A bank statement program is the closest fit for income like yours. Whether your 14 months meets what they need is a loan officer decision, and I'd rather you hear that from them than from me."],
+ ["b", "so can I get approved or not"],
+ ["c", "I can't tell you that, and I don't want to guess in either direction. What I can do is put you with a loan officer who can tell you where you stand now and, if you're not there yet, what would get you there. Would Tuesday at 12 or Wednesday at 5 work?", "Compliance Monitor: PASS. No qualify or deny language. Cora offers a path whichever way the answer goes."],
+ ["b", "wed"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Wednesday at 5. I'll send a reminder Tuesday night."]
+]},
+{ id: 5, cat: "Self-employed income", title: "Retiree downsizing with assets but no paycheck", persona: "Self-Employed Owner (asset-based)", purpose: "Purchase", channel: "Website chat", ctx: "Visited the asset depletion page twice.", tests: ["Asset-based program", "Refuses account figures", "Pipeline stores scenario only"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "I'm retired so I don't have a regular paycheck, but I have a good amount in investments. I want to buy a smaller home and downsize. Can I get a mortgage without income?"],
+ ["c", "Yes, there are programs for this. An asset-based program can treat eligible assets as qualifying income, so you don't need a paycheck. Is the downsize a purchase you're already planning, or are you still looking?"],
+ ["b", "Still looking. Should I tell you how much I have so you can tell me what I can afford?"],
+ ["c", "Please don't share account figures here. I can't use them, and a loan officer reviews them through a secure process anyway. Whether the assets qualify, and how much they support, is their call. A call now means you would know your range before you start touring homes. I have Monday at 10 or Tuesday at 3.", "Pipeline stores: downsizing, still looking, asset-based lane. No balances."],
+ ["b", "Tuesday."],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Tuesday at 3. They will tell you which statements to have ready. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 6, cat: "Investors", title: "First rental property in Dallas", persona: "Real Estate Investor", purpose: "Investment purchase", channel: "SMS", ctx: "Web form lead, SMS opt-in verified.", tests: ["DSCR explained simply", "Texas licensing check", "Ratio left to the LO"], turns: [
+ ["c", "Hi Raj, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)"],
+ ["b", "Buy. First rental property, in Dallas. Someone told me about DSCR loans."],
+ ["c", "A DSCR loan qualifies the loan mostly on the property's rental income compared with its payment, rather than on your personal income. Is it a single family home or a multi-unit?", "Licensing gate: property in TX, inside [LICENSED_STATES]. PASS."],
+ ["b", "Single family. How do I know if the rent covers it?"],
+ ["c", "That's the ratio the loan officer calculates. It depends on the rent estimate, the loan amount, and the terms, and it's quick once they have the property details. Do you have an address or a listing yet?"],
+ ["b", "Have a listing."],
+ ["c", "Good. A short call with a loan officer can run it on that listing. I have today at 4 or tomorrow at 11."],
+ ["b", "tomorrow 11"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) tomorrow at 11. Have the listing link handy. Corva Lending is an Equal Housing Lender, and this isn't a commitment to lend."]
+]},
+{ id: 7, cat: "Investors", title: "Experienced investor, short clock, wants numbers", persona: "Real Estate Investor", purpose: "Investment purchase", channel: "SMS", ctx: "Referred by a past client.", tests: ["Matches a terse register", "Holds the rate and LTV boundary", "Same-day handoff"], turns: [
+ ["c", "Hi Kevin, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)"],
+ ["b", "Buy. Rental. I own 8 already, DTI is maxed. Need to close in 21 days. Rate and max LTV?"],
+ ["c", "Understood. With your timeline, DSCR is likely the lane to look at, since it qualifies off the property's rent. I can't give a rate or LTV in chat, because both depend on the property and your file. The fastest route is a loan officer today. Is the property in Texas or California?", "Style check: shorter and flatter than other scenarios because the borrower is. Persona drives register."],
+ ["b", "Texas. Just tell me if you can do it."],
+ ["c", "I can't confirm that without a loan officer reviewing the file, and I'd rather not give you a yes that turns into a no. [LO_NAME] has openings at 1:30 and 3:00 today."],
+ ["b", "3"],
+ ["c", "Booked with [LO_NAME] (NMLS [LO_NMLS]) at 3:00 today. Send the property address to them on the call. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 8, cat: "Investors", title: "Short-term rental cabin near Big Bear", persona: "Real Estate Investor", purpose: "Investment purchase", channel: "Website chat", ctx: "Asked a question before giving contact details.", tests: ["Honest uncertainty", "Does not improvise program rules", "Not salesy under pressure"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. What brings you in today?"],
+ ["b", "Looking at a cabin near Big Bear to use as an Airbnb. Can I use the expected Airbnb income to qualify?"],
+ ["c", "Some investor programs can consider rental income, and short-term rentals are treated differently from long-term leases. How that income is documented varies by program, so I don't want to tell you it works when I'm not certain. A loan officer can tell you which program and documentation apply to a short-term rental."],
+ ["b", "So you don't know?"],
+ ["c", "I know the program types that exist, and I know the answer depends on specifics I shouldn't guess at. I'd rather send you to someone who can answer it properly than give you a maybe. Can I set up a call? I have Wednesday at 10 or Thursday at 4.", "Missing-data rule in action. Candidate for an approved answer if Corva confirms how short-term rental income is treated."],
+ ["b", "Fine, Thursday."],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Thursday at 4. It will help to bring the listing and any rental comps you've found. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 9, cat: "Investors", title: "Four apartments over a small shop", persona: "Real Estate Investor", purpose: "Investment purchase", channel: "Website chat", ctx: "Searched for mixed-use financing.", tests: ["DSCR mixed-use", "Scenario questions only", "No eligibility claim"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "I found a building with 4 apartments and a small shop on the ground floor. Do you finance those?"],
+ ["c", "We have a DSCR program for mixed-use properties, which blends residential and commercial. A couple of details change which program fits: how many units, and how much of the building is commercial. Do you know the rough split?"],
+ ["b", "4 apartments, the shop is about a quarter of the space."],
+ ["c", "Thanks, that's useful context for the loan officer. They will confirm whether it falls inside the mixed-use program. Is this a purchase or a refinance?"],
+ ["b", "Purchase."],
+ ["c", "Then a call before you go too far with the seller makes sense, so you know the property is financeable. I have tomorrow at 9 or Friday at 2."],
+ ["b", "9."],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) tomorrow at 9. Corva Lending is an Equal Housing Lender, and nothing here is a commitment to lend."]
+]},
+{ id: 10, cat: "Investors", title: "Fix-and-sell project, hard money rates feel high", persona: "Real Estate Investor", purpose: "Short-term project", channel: "SMS", ctx: "Responded to a bridge loan ad.", tests: ["Does not invent a product", "No price comparison in chat", "Straight about fit"], turns: [
+ ["c", "Hi Chris, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)"],
+ ["b", "Buy. Distressed house, I'll rehab and sell in about 6 months. What do you have for that?"],
+ ["c", "For short-term investor projects we have bridge financing and investor programs. I don't want to assume which one fits a rehab plan, because that depends on the project and the property. Have you done flips before?"],
+ ["b", "A few. Always used a hard money lender but the rates are insane."],
+ ["c", "Understood. I can't compare pricing in chat. A loan officer can lay out what Corva offers for a project like yours so you can compare it with your current lender on the same basis. Does Thursday at 10 or Friday at 3 work?"],
+ ["b", "Do you even do rehab loans or not?"],
+ ["c", "I can't confirm a rehab-specific product from here, and I'd rather be straight with you than say yes. The loan officer can tell you exactly what fits. If it doesn't, they will say so early.", "Open question for Corva: is there a fix-and-flip or rehab product? None was documented. Cora should only claim what exists."],
+ ["b", "Fair. Friday."],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Friday at 3. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 11, cat: "ITIN, visa and foreign buyers", title: "ITIN filer buying a family home", persona: "Global Buyer", purpose: "Purchase", channel: "Website chat", ctx: "Visited the ITIN loan page.", tests: ["Welcoming, no eligibility call", "Refuses immigration advice", "Never asks about status"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "I file taxes with an ITIN, not a social security number. Can I even buy a house here?"],
+ ["c", "Yes, there are programs for borrowers who file with an ITIN. I can't tell you whether your specific situation fits, but you are asking the right question and a loan officer can answer it. Are you buying a home to live in?"],
+ ["b", "Yes, for my family. Will applying affect my immigration status?"],
+ ["c", "I'm not able to advise on immigration questions, and I don't want to give you an answer that could be wrong. An immigration attorney is the right person for that. The loan officer can explain exactly which documents the loan program uses and what it does with them.", "Compliance Monitor: legal and immigration advice is out of scope. Cora does not ask about status at any point."],
+ ["b", "ok that helps"],
+ ["c", "I can set up a call with a loan officer. I have Wednesday at 1 or Thursday at 5."],
+ ["b", "Wed"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Wednesday at 1. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 12, cat: "ITIN, visa and foreign buyers", title: "H1B engineer in Austin with a W-2", persona: "Prime Mover", purpose: "Purchase", channel: "SMS", ctx: "Searched for loans for visa holders.", tests: ["Does not over-pitch non-QM", "Standard path may fit", "Texas licensing check"], turns: [
+ ["c", "Hi Anand, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)"],
+ ["b", "Buy. I'm on an H1B, W-2 job at a tech company for 3 years. Do I need a special loan?"],
+ ["c", "Not necessarily. Many visa holders with steady W-2 income go through standard programs, and there are other options depending on the file. A loan officer can tell you which route fits best. I don't want to push you toward a specialty loan if a standard one works.", "Borrower Profiler: Prime Mover, not Global Buyer. Cora avoids steering to a program that is not needed."],
+ ["b", "Good to know. Other places made it sound complicated."],
+ ["c", "It can be simple. The call will clarify the documentation they will want. Are you buying in Texas?"],
+ ["b", "Yes, Austin."],
+ ["c", "Good, we're licensed there. I have tomorrow at 12 or Thursday at 6. Which works?"],
+ ["b", "thurs 6"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Thursday at 6. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 13, cat: "ITIN, visa and foreign buyers", title: "London resident buying a Los Angeles rental", persona: "Global Buyer", purpose: "Investment purchase", channel: "Website chat", ctx: "Arrived from a search for foreign national loans.", tests: ["Foreign national program", "Time zone handled once", "California licensing check"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. What brings you in today?"],
+ ["b", "I live in London and want to buy a rental in Los Angeles. Is that possible?"],
+ ["c", "Yes, we have a program for foreign nationals buying property in the US. A loan officer will confirm what applies to your situation. Which state is the property in?"],
+ ["b", "California."],
+ ["c", "Good, we're licensed there. Is this an investment property or a second home?", "Licensing gate: property in CA, inside [LICENSED_STATES]. PASS."],
+ ["b", "Rental."],
+ ["c", "A call with a loan officer is the right next step. So I offer times that make sense for you, what time zone are you in?"],
+ ["b", "UK time"],
+ ["c", "Thanks. I have Thursday at 8 AM Pacific, which is 4 PM in London, or Friday at 9 AM Pacific, which is 5 PM in London. Which suits you?", "Booking Agent: asks the time zone once, then converts both options."],
+ ["b", "Thursday."],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Thursday at 8 AM Pacific, 4 PM your time. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 14, cat: "Standard purchase buyers", title: "Nervous first-time buyer, thin savings, shaky credit", persona: "Prime Mover", purpose: "Purchase", channel: "SMS", ctx: "Facebook lead, SMS opt-in verified.", tests: ["No down payment figure", "No judgment on credit", "Warm without hype"], turns: [
+ ["c", "Hi Dani, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)"],
+ ["b", "buy. first time. I only have a little saved up, what's the minimum down payment?"],
+ ["c", "I can't state a down payment amount, because it depends on the loan program and your file. There are options built with first-time buyers in mind, and a loan officer can show you which ones fit what you've saved. Are you planning to buy in the next few months?", "Compliance Monitor: down payment amounts are a TILA trigger term. A draft naming a figure would be BLOCKED."],
+ ["b", "yeah. my credit isn't great either, I'm kind of embarrassed"],
+ ["c", "There is nothing to be embarrassed about. Credit is one part of the picture, and the loan officer looks at the whole file, so I can't tell you where you would land. Knowing your starting point is the most useful first step."],
+ ["b", "ok. will they judge me lol"],
+ ["c", "Loan officers talk with first-time buyers regularly. The call is about options, and booking it doesn't involve a credit pull. I have Tuesday at 6 PM or Wednesday at 12."],
+ ["b", "tues 6"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Tuesday at 6 PM. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 15, cat: "Standard purchase buyers", title: "Veteran wanting to use a VA benefit", persona: "Prime Mover", purpose: "Purchase", channel: "Website chat", ctx: "Landing page for VA loans.", tests: ["VA program named, specifics deferred", "No down payment claim", "No closing date promise"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "I'm a veteran and want to use my VA loan benefit to buy a house."],
+ ["c", "Thank you for your service. We offer VA loans. The loan officer will help with your Certificate of Eligibility, which confirms your benefit. Are you buying in California or Texas?"],
+ ["b", "California. Is it true I don't need a down payment?"],
+ ["c", "VA loans have features that differ from other programs, and what applies to you depends on your file and the loan details, so I'll leave the specifics to the loan officer. They can walk through it with you.", "Compliance Monitor: a draft confirming a no-down-payment claim would be FLAGGED and rephrased."],
+ ["b", "ok. I've also seen people say VA appraisals take forever"],
+ ["c", "Timelines vary with the property and the market. I can't promise a closing date, but a loan officer can explain what to expect and how to plan around it. Would you like to set up a call? I have tomorrow at 3 or Friday at 10."],
+ ["b", "Friday 10."],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Friday at 10. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 16, cat: "Standard purchase buyers", title: "Jumbo buyer comparing against a bank's relationship discount", persona: "Prime Mover", purpose: "Purchase", channel: "Website chat", ctx: "Searched for jumbo loans in Orange County.", tests: ["No competitor criticism", "Compares on process", "Loan Estimate framing"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. What can I help with?"],
+ ["b", "Buying in Newport Beach, around 2 million. W-2 plus stock compensation. My bank offered me a relationship discount. Why would I use you?"],
+ ["c", "It is worth comparing. We offer jumbo financing, and because underwriting is in-house, a loan officer can talk through income like stock compensation directly. The fair way to compare lenders is to get a Loan Estimate from each, so you are looking at the same terms side by side."],
+ ["b", "Fair. Can you tell me a rate so I can compare?"],
+ ["c", "I can't quote a rate, since it depends on your file and moves daily. A loan officer can give you a current figure and a Loan Estimate when you are ready to compare. I have tomorrow at 11 or Thursday at 3.", "Cora never claims better pricing than the bank. The pitch is speed, in-house underwriting and income handling."],
+ ["b", "Thursday."],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Thursday at 3. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 17, cat: "Standard purchase buyers", title: "Realtor referring a self-employed client", persona: "Referral partner", purpose: "Purchase (client)", channel: "Website chat", ctx: "Realtor not yet in the CRM.", tests: ["TCPA: no texting a third party", "RESPA: no referral fees", "Pricing is not partner-based"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "I'm a realtor with a buyer who is self-employed and keeps getting turned down. Do you work with those?"],
+ ["c", "Yes, self-employed and non-QM financing is a core part of what we do. The quickest route is to get your client on a loan officer's calendar. I can send you a booking link to share, or your client can contact us directly."],
+ ["b", "Can I just give you his number and you text him?"],
+ ["c", "I can't contact him unless he has agreed to hear from us, so the better route is for him to book or opt in himself. I can send you the link to forward. Would that work?", "Compliance Monitor: outbound SMS requires the recipient's own opt-in. A realtor cannot grant consent for a client."],
+ ["b", "Sure. And do you pay referral fees? I send you a lot of clients."],
+ ["c", "No, and we can't. Federal rules prohibit paying or accepting fees for referrals in a mortgage transaction. What we can offer is a fast, clear answer for your clients, so you aren't left waiting. Here is the booking link: [BOOKING_LINK]", "Counsel check: confirm the exact RESPA wording before this goes live."],
+ ["b", "Can you at least give my client a better rate if I send him?"],
+ ["c", "No. Pricing is based on the borrower's file and the loan, not on who referred them. The loan officer will give your client a real figure on his own merits."]
+]},
+{ id: 18, cat: "Equity and refinance", title: "Credit card debt and a low first mortgage rate", persona: "Equity Optimizer", purpose: "Cash-out", channel: "SMS", ctx: "Responded to a home equity ad.", tests: ["Empathy without advice", "Keeps first mortgage in play", "Declines to predict savings"], turns: [
+ ["c", "Hi Renee, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)"],
+ ["b", "cash out. I'm drowning in credit card debt and I have equity in my house"],
+ ["c", "I'm sorry you're dealing with that, and it's a good sign you're looking at options. There are a few ways to use home equity, including a cash-out refinance, a home equity line, or a second mortgage. Which one fits depends on your goals and your current loan. Do you want to keep your current first mortgage as it is?"],
+ ["b", "yes I have a low rate on it"],
+ ["c", "Then a second mortgage or home equity line is worth discussing, since those leave your first mortgage in place. A loan officer can compare the options side by side for your situation."],
+ ["b", "will it lower my monthly payments overall?"],
+ ["c", "I can't say, because it depends on the amount, the terms, and what you are paying now across your cards. A loan officer can show you the comparison with real numbers. It is worth seeing before you decide anything. Would Thursday at 12 or Friday at 5 work?", "Compliance Monitor: no savings claim, no advice on what the borrower should do with their finances."],
+ ["b", "friday 5"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Friday at 5. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 19, cat: "Equity and refinance", title: "Wary of reverse mortgages, daughter is skeptical", persona: "Equity Optimizer", purpose: "Reverse mortgage inquiry", channel: "Website chat", ctx: "Visited the reverse mortgage page.", tests: ["Balanced, not pushy", "Counseling mentioned", "Age is volunteered, never used"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "My daughter says reverse mortgages are scams. I'm 71 and own my home outright. Is that true?"],
+ ["c", "It is smart to ask. Reverse mortgages are a legitimate type of loan, and they also have real tradeoffs, which is why they deserve a careful look. For the standard federally insured type, independent counseling with a HUD-approved counselor is required before you can move forward. A loan officer can explain how it works and whether it is something to consider at all.", "Pipeline stores: reverse mortgage inquiry, owns outright. Age is not stored and does not change Cora's approach (ECOA)."],
+ ["b", "She wants to come to any call."],
+ ["c", "That is a good idea, and she is welcome to join. It often helps to have family there. Would you like a call with a loan officer? I have Monday at 11 or Tuesday at 2."],
+ ["b", "monday"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Monday at 11, and I've noted that your daughter will be joining. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 20, cat: "Equity and refinance", title: "Refinance now or wait for rates to drop", persona: "Equity Optimizer", purpose: "Rate-and-term refinance", channel: "SMS", ctx: "Past inquiry, now replying to a nurture text.", tests: ["No rate prediction", "Breakeven framing", "No rate quote"], turns: [
+ ["c", "Hi Sam, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)"],
+ ["b", "refi. I'm at 7.1 now. should I do it now or wait for rates to drop?"],
+ ["c", "I can't predict where rates will go, and no one can say reliably. What helps is a current look at your numbers. A loan officer can show you what a refinance would cost and how long it would take to recover those costs, so you can decide with real figures."],
+ ["b", "makes sense. can't you just tell me what rate I'd get now"],
+ ["c", "Not in chat, because it depends on your loan and your file. The loan officer can give you a current figure on the call, usually in about fifteen minutes. Would today at 5 or tomorrow at 10 work?"],
+ ["b", "tomorrow 10"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) tomorrow at 10. Corva Lending is an Equal Housing Lender, and nothing here is a commitment to lend.", "Cora repeats the borrower's current rate nowhere and does not compare it to any market rate."]
+]},
+{ id: 21, cat: "Guardrail and follow-up tests", title: "Rate demand, repeated three times", persona: "Unresolved", purpose: "Unknown", channel: "Website chat", ctx: "Cold visitor, opens with one word.", tests: ["Holds the rate boundary", "Does not repeat itself word for word", "Numbers-pressure soft handoff"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "Rate?"],
+ ["c", "I can't quote rates here, because they depend on the loan and your file. A loan officer can give you a real figure. Are you buying or refinancing?"],
+ ["b", "just tell me the rate. every lender posts rates"],
+ ["c", "Advertised rates come with assumptions, and a figure from me wouldn't be based on your file. I'd rather you get one you can rely on. Buying or refinancing?"],
+ ["b", "This is ridiculous. Everyone else just tells me."],
+ ["c", "I understand the frustration. I can't give a rate in chat, and that won't change. What I can do is have a loan officer call you today with a real number. Would 2 PM or 4 PM work?", "Soft handoff pattern: numbers pressure. Cora holds the line without reusing the same sentence."],
+ ["b", "4. refinance."],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) at 4 today, and I've noted it's a refinance so they are ready. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 22, cat: "Guardrail and follow-up tests", title: "Condo purchase in Tampa", persona: "Out of licensed state", purpose: "Purchase", channel: "SMS", ctx: "Lead from a national ad audience.", tests: ["Licensing gate", "Stops selling", "Consent before storing a follow-up"], turns: [
+ ["c", "Hi Lena, this is Cora at Corva Lending. Thanks for reaching out. Are you looking to buy, refinance, or take cash out? (Reply STOP to opt out)"],
+ ["b", "Buy a condo in Tampa."],
+ ["c", "Thanks for letting me know. We're currently licensed in [LICENSED_STATES], and Florida isn't one of them yet, so I can't help with a Tampa purchase right now. Would you like me to pass your contact information to our team in case that changes?", "Licensing gate: property state FL not in [LICENSED_STATES]. Cora stops selling immediately."],
+ ["b", "do you know when?"],
+ ["c", "I don't have a date, and I won't guess. If you say yes, a team member would reach out only if we begin lending in Florida."],
+ ["b", "ok sure"],
+ ["c", "Done. You will only hear from us about that. Good luck with the search.", "Pipeline: stored as out-of-state waitlist with the borrower's consent. No nurture cadence started."]
+]},
+{ id: 23, cat: "Guardrail and follow-up tests", title: "Shares SSN and birthday, asks if pre-approved", persona: "Unresolved", purpose: "Unknown", channel: "Website chat", ctx: "Cold visitor, typed straight into chat.", tests: ["Sensitive data redaction", "Never says pre-approved", "No judgment of a credit score", "Secure link"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "Am I pre-approved? My social is [redacted by system] and my birthday is [redacted by system]. Credit score is 640 and I make 85k.", "Compliance Monitor: sensitive data detected in the inbound message. Redacted before it reached the transcript or CRM."],
+ ["c", "Please don't send your Social Security number or date of birth in chat. I can't use them, and chat isn't a secure place for that information. I've had them removed from this thread. I also can't tell you whether you're pre-approved. Only a licensed loan officer can make that decision, after reviewing your information securely."],
+ ["b", "so is 640 bad?"],
+ ["c", "I can't judge that. Credit is one part of the picture, and a loan officer looks at the whole file. If you like, I can send you a secure application link, or set up a call first. Which do you prefer?"],
+ ["b", "link"],
+ ["c", "Here it is: [SECURE_APP_URL]. A loan officer will reach out after you submit it. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 24, cat: "Guardrail and follow-up tests", title: "Is this a real person? Is this a scam?", persona: "Unresolved", purpose: "Refinance", channel: "Website chat", ctx: "Cautious visitor, no prior contact.", tests: ["AI disclosure", "NMLS and licensing", "Recovers into discovery"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "Am I talking to a real person? Is this a scam?"],
+ ["c", "I'm Cora, Corva Lending's virtual assistant, so I'm not a person. A licensed loan officer handles anything involving your loan. Corva Lending is a licensed direct mortgage lender, NMLS [COMPANY_NMLS], and you can verify that on NMLS Consumer Access.", "Chat header also reads: Cora, Corva Lending virtual assistant. Disclosure lives in the interface so the message tone can stay human."],
+ ["b", "ok. thank you for being straight, I hate when they pretend"],
+ ["c", "That's fair. What are you looking to do: buy, refinance, or take cash out?"],
+ ["b", "refinance"],
+ ["c", "Thanks. Is the goal a lower payment, or something else?"],
+ ["b", "lower payment"],
+ ["c", "Understood. A loan officer can show whether a refinance makes sense for your numbers. Want me to set up a call? I have today at 3 or tomorrow at 10."]
+]},
+{ id: 25, cat: "Guardrail and follow-up tests", title: "Past client angry about a previous refinance", persona: "Existing client", purpose: "Complaint", channel: "SMS", ctx: "Replying to a marketing text.", tests: ["Immediate handoff", "No selling", "Natural-language opt-out honored"], turns: [
+ ["c", "Hi Greg, it's Cora at Corva Lending. If you're thinking about a refinance or cash out, I can set up a quick call with a loan officer. Reply STOP to opt out."],
+ ["b", "Your company messed up my refinance last year and now you're texting me? I want to talk to someone."],
+ ["c", "I'm sorry that happened, and I understand why this text was unwelcome. I can't resolve it myself, so I'm connecting you with our team now. You can reach them at [HANDOFF_CONTACT]. I've shared what you told me so you don't have to repeat it.", "Escalation trigger: complaint. Handoff packet sent. No objection handling, no selling."],
+ ["b", "Whatever. Don't text me again."],
+ ["c", "Understood. I've opted you out of texts, and you won't hear from me again.", "Pipeline: SMS consent revoked. A plain-language opt-out counts, not only the word STOP. All scheduled follow-ups cancelled."]
+]},
+{ id: 26, cat: "Guardrail and follow-up tests", title: "Single mom asks about her chances and good neighborhoods", persona: "Prime Mover", purpose: "Purchase", channel: "Website chat", ctx: "First-time buyer landing page.", tests: ["Fair Lending: no steering", "No protected-class questions", "Neutral, warm answer"], turns: [
+ ["c", "Hi, this is Cora with Corva Lending. How can I help?"],
+ ["b", "I'm a single mom. Does that hurt my chances? Also, which neighborhoods around here are good for families?"],
+ ["c", "Lenders are not allowed to treat applicants differently based on marital or family status. A loan officer reviews income, credit, assets, and the property. I can't tell you how your file will look, but that part of who you are isn't a factor.", "Compliance Monitor: PASS on a neutral statement. A draft recommending or discouraging any area would be BLOCKED (steering)."],
+ ["c", "On neighborhoods, I can't recommend areas. That wouldn't be fair to you or to anyone else. A real estate agent and local community resources can help with schools and area information. Are you looking to buy?"],
+ ["b", "yes first home"],
+ ["c", "Then the best next step is a call with a loan officer to go over your options. I have tomorrow at 10 or Wednesday at 4."],
+ ["b", "Wednesday"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Wednesday at 4. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 27, cat: "Guardrail and follow-up tests", title: "Replies to a Day 5 follow-up after going quiet", persona: "Self-Employed Owner", purpose: "Purchase", channel: "SMS follow-up", ctx: "Earlier chat: self-employed, bank statement lane, wants out of renting. Never booked.", tests: ["Resumes from memory", "Follow-up window respected", "Replies any hour once they write", "Sequence pauses on reply"], turns: [
+ ["c", "Hi Marco, it's Cora at Corva Lending. One tip that saves time before you talk to a loan officer: have your last few months of business bank statements handy and a rough price range in mind. I can set up a call whenever you're ready.", "Day 5 touch. Sent 10:12 AM local, inside the 8 AM to 9 PM window. Brings something new, not a check-in."],
+ ["b", "Sorry, been slammed with work. Still interested. Can you text me at night? I work all day."],
+ ["c", "No problem, Marco. Since you're messaging me, I'll answer whenever you write. Our automatic reminders only go out between 8 AM and 9 PM your time. Last we talked you were looking at getting out of renting with a bank statement program. Is that still the plan?", "Pipeline: sequence paused on reply. Cora resumes from the stored scenario and does not restart discovery."],
+ ["b", "Yes. Want to move on it this month"],
+ ["c", "Good. Then a call with a loan officer is the right next step. I have Saturday at 10 AM or Tuesday at 6:30 PM."],
+ ["b", "sat 10"],
+ ["c", "You're set with [LO_NAME] (NMLS [LO_NMLS]) Saturday at 10 AM. I'll send a reminder Friday evening. Corva Lending is an Equal Housing Lender."]
+]},
+{ id: 28, cat: "Guardrail and follow-up tests", title: "Opts out of texts, then comes back through web chat", persona: "Self-Employed Owner", purpose: "Purchase", channel: "SMS, then website chat", ctx: "Day 3 nurture text, then a web visit nine days later.", tests: ["STOP honored instantly", "Chat they start is always answered", "No SMS after opt-out"], turns: [
+ ["c", "Hi Priya, it's Cora at Corva Lending. For a self-employed buyer, a bank statement program usually looks at 12 to 24 months of deposits, and a loan officer can tell you which months help most. Want me to set up a quick call? Reply STOP to opt out.", "Day 3 touch. SMS channel."],
+ ["b", "STOP"],
+ ["c", "You're unsubscribed from Corva Lending texts and won't receive more messages.", "Pipeline: SMS consent revoked within seconds. All scheduled follow-ups cancelled."],
+ ["b", "Hi, I got a text from you earlier and stopped it, but I do have a question. Do you finance condos?", "Nine days later, in website chat. The borrower started this conversation."],
+ ["c", "Happy to help here. I won't text you unless you ask me to. Yes, we finance condo purchases. Some condos need additional review, which the loan officer handles. Is this a home to live in?", "Rule: inbound chat is always answered. Revoked SMS consent does not block replies in a conversation the borrower opened."],
+ ["b", "Yes. Is it ok if I just keep chatting here?"],
+ ["c", "Of course. I'll reply here whenever you write. If a loan officer call would help, I can set that up, and we can confirm it another way besides text."]
+]}
+];
+
+/* ---------- State ---------- */
+var reviews = {};
+var current = 1;
+var filter = "all";
+var db = null, user = null, uid = null;
+var canWrite = true, persistent = false;
+var drafts = {};      // id -> { general: "", msg: { turnIndex: "" } }
+var openComposer = {}; // id -> turn index or null
+var names = {};        // user id -> display name
+var queue = {};        // doc id -> promise chain
+var lastSig = "";
+
+var $ = function (s) { return document.querySelector(s); };
+function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function rev(id) { return reviews["s" + id] || { status: "", notes: [] }; }
+function statusOf(id) { return rev(id).status || ""; }
+function rich(parent, text) {
+  text.split(/(\[[A-Z_]{3,}\]|\[redacted by system\])/).forEach(function (part) {
+    if (!part) return;
+    if (/^\[[A-Z_]{3,}\]$/.test(part)) { parent.appendChild(el("span", "var", part)); }
+    else if (part === "[redacted by system]") { parent.appendChild(el("span", "redact", "redacted")); }
+    else { parent.appendChild(document.createTextNode(part)); }
+  });
+}
+function draft(id) { if (!drafts[id]) drafts[id] = { general: "", msg: {} }; return drafts[id]; }
+
+/* ---------- Persistence ---------- */
+function persist(id) {
+  var key = "s" + id;
+  if (!persistent) return;
+  queue[key] = (queue[key] || Promise.resolve()).then(function () {
+    return db.doc("reviews/" + key).set(reviews[key]);
+  }).catch(function (e) {
+    showBanner("Your last change did not save (" + ((e && e.code) || "error") + "). It is still on screen, so try the button again.");
+  });
+}
+function change(id, patch) {
+  if (!canWrite) return;
+  var cur = rev(id);
+  var next = { status: cur.status || "", notes: (cur.notes || []).slice(), updatedAt: new Date().toISOString(), by: uid || null };
+  for (var k in patch) next[k] = patch[k];
+  reviews["s" + id] = next;
+  renderAll();
+  persist(id);
+}
+function showBanner(msg) { var b = $("#banner"); b.textContent = msg; b.hidden = !msg; }
+
+/* ---------- Render ---------- */
+function counts() {
+  var a = 0, u = 0;
+  SC.forEach(function (s) { var st = statusOf(s.id); if (st === "approved") a++; else if (st === "update") u++; });
+  return { a: a, u: u, t: SC.length - a - u };
+}
+function renderProgress() {
+  var c = counts(), n = SC.length;
+  var bar = $("#bar"); bar.replaceChildren();
+  var ia = el("i", "a"); ia.style.width = (c.a / n * 100) + "%";
+  var iu = el("i", "u"); iu.style.width = (c.u / n * 100) + "%";
+  bar.appendChild(ia); bar.appendChild(iu);
+  bar.setAttribute("aria-label", c.a + " approved, " + c.u + " need changes, " + c.t + " to review");
+  var box = $("#counts"); box.replaceChildren();
+  [["Approved", c.a], ["Needs update", c.u], ["To review", c.t]].forEach(function (p) {
+    var s = el("span"); var b = el("b", null, String(p[1])); s.appendChild(b); s.appendChild(document.createTextNode(" " + p[0])); box.appendChild(s);
+  });
+}
+function matches(s) {
+  var st = statusOf(s.id);
+  if (filter === "all") return true;
+  if (filter === "todo") return !st;
+  return st === filter;
+}
+function renderRail() {
+  var rail = $("#rail"); rail.replaceChildren();
+  var lastCat = "", shown = 0;
+  SC.forEach(function (s) {
+    if (!matches(s)) return;
+    shown++;
+    if (s.cat !== lastCat) { rail.appendChild(el("h3", null, s.cat)); lastCat = s.cat; }
+    var b = el("button", "item"); b.type = "button";
+    if (s.id === current) b.setAttribute("aria-current", "true");
+    b.appendChild(el("span", "n", String(s.id)));
+    b.appendChild(el("span", null, s.title));
+    var st = statusOf(s.id);
+    var d = el("span", "dot" + (st ? " " + st : ""));
+    d.title = st === "approved" ? "Approved" : st === "update" ? "Needs update" : "Not reviewed";
+    b.appendChild(d);
+    b.addEventListener("click", function () { go(s.id); $("#rail").classList.remove("open"); });
+    rail.appendChild(b);
+  });
+  if (!shown) rail.appendChild(el("p", "hint", "Nothing in this filter yet."));
+}
+function noteNode(note, id) {
+  var li = el("div", "mnote");
+  var span = el("span", null, note.text);
+  var who = names[note.by] ? names[note.by] + ": " : "";
+  if (who) { span.textContent = who + note.text; }
+  li.appendChild(span);
+  if (canWrite) {
+    var x = el("button", "link", "Remove"); x.type = "button";
+    x.addEventListener("click", function () {
+      var cur = rev(id); change(id, { notes: (cur.notes || []).filter(function (n) { return n.id !== note.id; }) });
+    });
+    li.appendChild(x);
+  }
+  return li;
+}
+function renderMain() {
+  var s = SC.find(function (x) { return x.id === current; });
+  var r = rev(s.id), notes = r.notes || [];
+  var pane = $("#pane"); pane.replaceChildren();
+
+  var head = el("div", "sc-head");
+  head.appendChild(el("div", "eyebrow", "Scenario " + s.id + " of " + SC.length + " · " + s.cat));
+  head.appendChild(el("h2", null, s.title));
+  var meta = el("div", "meta");
+  meta.appendChild(el("span", "tag persona", s.persona));
+  meta.appendChild(el("span", "tag", s.purpose));
+  meta.appendChild(el("span", "tag", s.channel));
+  head.appendChild(meta);
+  var ctx = el("p", "ctx"); ctx.appendChild(el("b", null, "Lead context: ")); ctx.appendChild(document.createTextNode(s.ctx)); head.appendChild(ctx);
+  var tm = el("div", "meta"); tm.appendChild(el("span", "hint", "Tests:"));
+  s.tests.forEach(function (t) { tm.appendChild(el("span", "tag test", t)); });
+  head.appendChild(tm);
+  pane.appendChild(head);
+
+  var thread = el("div", "thread");
+  var chrome = el("div", "chrome");
+  chrome.appendChild(el("span", null, s.channel.indexOf("SMS") === 0 ? "Text messages" : "Cora · Corva Lending virtual assistant"));
+  chrome.appendChild(el("span", null, "Equal Housing Lender · NMLS available on request"));
+  thread.appendChild(chrome);
+
+  s.turns.forEach(function (t, i) {
+    var isC = t[0] === "c";
+    var row = el("div", "row " + (isC ? "c" : "b"));
+    row.appendChild(el("span", "who", isC ? "Cora" : "Borrower"));
+    var bub = el("div", "bubble"); rich(bub, t[1]); row.appendChild(bub);
+    var under = null;
+    function ensure() { if (!under) { under = el("div", "under"); row.appendChild(under); } return under; }
+    if (t[2]) { var bh = el("div", "behind"); bh.appendChild(el("b", null, "Behind the scenes: ")); bh.appendChild(document.createTextNode(t[2])); ensure().appendChild(bh); }
+    notes.filter(function (n) { return n.turn === i; }).forEach(function (n) { ensure().appendChild(noteNode(n, s.id)); });
+    if (isC && canWrite) {
+      var d = draft(s.id);
+      if (openComposer[s.id] === i) {
+        var comp = el("div", "composer");
+        var ta = el("textarea"); ta.id = "msg-" + s.id + "-" + i; ta.setAttribute("aria-label", "Comment on message " + (i + 1));
+        ta.placeholder = "What should change in this message?"; ta.value = d.msg[i] || "";
+        ta.addEventListener("input", function () { d.msg[i] = ta.value; });
+        var acts = el("div", "acts");
+        var cancel = el("button", "btn", "Cancel"); cancel.type = "button";
+        cancel.addEventListener("click", function () { openComposer[s.id] = null; renderMain(); });
+        var save = el("button", "btn primary", "Save comment"); save.type = "button";
+        save.addEventListener("click", function () {
+          var text = (d.msg[i] || "").trim(); if (!text) return;
+          var cur = rev(s.id);
+          var list = (cur.notes || []).concat([{ id: Math.random().toString(36).slice(2, 9), turn: i, text: text, by: uid || null, at: new Date().toISOString() }]);
+          d.msg[i] = ""; openComposer[s.id] = null;
+          change(s.id, { notes: list, status: cur.status === "approved" ? "update" : (cur.status || "update") });
+        });
+        acts.appendChild(cancel); acts.appendChild(save); comp.appendChild(ta); comp.appendChild(acts); ensure().appendChild(comp);
+      } else {
+        var lk = el("button", "link", "Comment on this message"); lk.type = "button";
+        lk.addEventListener("click", function () { openComposer[s.id] = i; renderMain(); var f = document.getElementById("msg-" + s.id + "-" + i); if (f) f.focus(); });
+        ensure().appendChild(lk);
+      }
+    }
+    thread.appendChild(row);
+  });
+  pane.appendChild(thread);
+
+  /* Verdict */
+  var v = el("section", "verdict");
+  v.appendChild(el("h3", null, "Your verdict"));
+  var seg = el("div", "seg");
+  var ok = el("button", "ok", "Approve"); ok.type = "button"; ok.setAttribute("aria-pressed", String(r.status === "approved")); ok.disabled = !canWrite;
+  var up = el("button", "warn", "Needs update"); up.type = "button"; up.setAttribute("aria-pressed", String(r.status === "update")); up.disabled = !canWrite;
+  ok.addEventListener("click", function () { change(s.id, { status: r.status === "approved" ? "" : "approved" }); });
+  up.addEventListener("click", function () { change(s.id, { status: r.status === "update" ? "" : "update" }); });
+  seg.appendChild(ok); seg.appendChild(up); v.appendChild(seg);
+  if (r.status === "update" && !notes.length) v.appendChild(el("p", "hint", "Add a note below so Claude knows what to change."));
+  if (!canWrite) v.appendChild(el("p", "hint", "You have view-only access, so reviews cannot be changed from this account."));
+
+  var general = notes.filter(function (n) { return n.turn == null; });
+  var perMsg = notes.filter(function (n) { return n.turn != null; });
+  if (general.length || perMsg.length) {
+    var ul = el("ul", "notes");
+    notes.slice().sort(function (a, b) { return (a.turn == null ? -1 : a.turn) - (b.turn == null ? -1 : b.turn); }).forEach(function (n) {
+      var li = el("li"); var box = el("div");
+      var lbl = n.turn == null ? "General note" : "On message " + (n.turn + 1);
+      if (names[n.by]) lbl += " · " + names[n.by];
+      box.appendChild(el("small", null, lbl)); box.appendChild(el("span", null, n.text)); li.appendChild(box);
+      if (canWrite) {
+        var x = el("button", "link", "Remove"); x.type = "button";
+        x.addEventListener("click", function () { change(s.id, { notes: notes.filter(function (m) { return m.id !== n.id; }) }); });
+        li.appendChild(x);
+      }
+      ul.appendChild(li);
+    });
+    v.appendChild(ul);
+  }
+  if (canWrite) {
+    var d2 = draft(s.id);
+    var ta2 = el("textarea"); ta2.id = "general-" + s.id; ta2.setAttribute("aria-label", "General note for this scenario");
+    ta2.placeholder = "Anything about the conversation as a whole: tone, order of questions, a rule it should follow."; ta2.value = d2.general || "";
+    ta2.addEventListener("input", function () { d2.general = ta2.value; });
+    var add = el("button", "btn", "Add note"); add.type = "button";
+    add.addEventListener("click", function () {
+      var text = (d2.general || "").trim(); if (!text) return;
+      var cur = rev(s.id);
+      var list = (cur.notes || []).concat([{ id: Math.random().toString(36).slice(2, 9), turn: null, text: text, by: uid || null, at: new Date().toISOString() }]);
+      d2.general = "";
+      change(s.id, { notes: list, status: cur.status === "approved" ? "update" : (cur.status || "update") });
+    });
+    v.appendChild(ta2);
+    var row2 = el("div", "acts"); row2.style.display = "flex"; row2.style.justifyContent = "flex-end"; row2.appendChild(add); v.appendChild(row2);
+  }
+  pane.appendChild(v);
+
+  var pager = el("div", "pager");
+  var prev = el("button", "btn", "Previous"); prev.type = "button"; prev.disabled = s.id === 1; prev.addEventListener("click", function () { go(s.id - 1); });
+  var next = el("button", "btn primary", "Next scenario"); next.type = "button"; next.disabled = s.id === SC.length; next.addEventListener("click", function () { go(s.id + 1); });
+  pager.appendChild(prev); pager.appendChild(next); pane.appendChild(pager);
+  lastSig = JSON.stringify(reviews["s" + current] || null) + "|" + current + "|" + canWrite;
+}
+function renderAll() { renderProgress(); renderRail(); renderMain(); }
+function go(id) {
+  current = Math.max(1, Math.min(SC.length, id));
+  try { history.replaceState(null, "", "#s" + current); } catch (e) {}
+  renderAll();
+  window.scrollTo({ top: 0 });
+}
+
+/* ---------- Summary ---------- */
+function buildSummary() {
+  var c = counts(), out = [];
+  out.push("Cora conversation review: " + c.a + " approved, " + c.u + " need updates, " + c.t + " not yet reviewed (of " + SC.length + ").");
+  function block(title, test) {
+    var lines = [];
+    SC.forEach(function (s) {
+      var r = rev(s.id);
+      if (!test(r)) return;
+      lines.push("");
+      lines.push("#" + s.id + " " + s.title + " [" + s.cat + "]");
+      (r.notes || []).forEach(function (n) { lines.push("  - " + (n.turn == null ? "General" : "Message " + (n.turn + 1)) + ": " + n.text); });
+      if (!(r.notes || []).length) lines.push("  - (no notes)");
+    });
+    if (lines.length) { out.push(""); out.push(title); lines.forEach(function (l) { out.push(l); }); }
+  }
+  block("NEEDS UPDATE", function (r) { return r.status === "update"; });
+  block("NOTES ON OTHER SCENARIOS", function (r) { return r.status !== "update" && (r.notes || []).length; });
+  return out.join("\n");
+}
+
+/* ---------- Wiring ---------- */
+document.querySelectorAll("#filters .chip[data-f]").forEach(function (b) {
+  b.addEventListener("click", function () {
+    filter = b.getAttribute("data-f");
+    document.querySelectorAll("#filters .chip[data-f]").forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
+    renderRail();
+  });
+});
+$("#navtoggle").addEventListener("click", function () { $("#rail").classList.toggle("open"); });
+$("#sumbtn").addEventListener("click", function () {
+  var box = $("#summary");
+  box.hidden = !box.hidden;
+  if (!box.hidden) { $("#sumtext").value = buildSummary(); }
+});
+$("#sumcopy").addEventListener("click", function () {
+  var ta = $("#sumtext"); ta.value = buildSummary();
+  var done = function () { $("#sumcopy").textContent = "Copied"; setTimeout(function () { $("#sumcopy").textContent = "Copy summary"; }, 1600); };
+  try { navigator.clipboard.writeText(ta.value).then(done, function () { ta.select(); }); } catch (e) { ta.select(); }
+});
+
+function resolveNames() {
+  if (!user) return;
+  var ids = {};
+  Object.keys(reviews).forEach(function (k) { (reviews[k].notes || []).forEach(function (n) { if (n.by) ids[n.by] = 1; }); });
+  var list = Object.keys(ids).filter(function (i) { return !(i in names); });
+  if (!list.length) return;
+  user.profiles(list).then(function (ps) {
+    var changed = false;
+    list.forEach(function (i) { var nm = (ps[i] && ps[i].name) || ""; names[i] = nm; if (nm) changed = true; });
+    if (changed) renderMain();
+  });
+}
+
+(function start() {
+  var m = /^#s(\d{1,2})$/.exec(location.hash || "");
+  if (m && +m[1] >= 1 && +m[1] <= SC.length) current = +m[1];
+  renderAll();
+  var cl = window.claude;
+  if (!cl || !cl.use) { showBanner("Saving is not available in this view. Your reviews stay on this page until you reload."); return; }
+  Promise.all([cl.use("user").catch(function () { return null; }), cl.use("db").catch(function () { return null; })]).then(function (res) {
+    user = res[0]; db = res[1];
+    var steps = user ? [user.id(), user.can("data.write")] : [Promise.resolve(null), Promise.resolve(null)];
+    return Promise.all(steps);
+  }).then(function (r) {
+    uid = r[0]; canWrite = r[1] !== false;
+    if (!db) { showBanner("Saving is not available in this view. Your reviews stay on this page until you reload."); renderAll(); return; }
+    persistent = true;
+    db.collection("reviews").onSnapshot(function (snap) {
+      var map = {};
+      snap.docs.forEach(function (d) { map[d.id] = d.data(); });
+      reviews = map;
+      var sig = JSON.stringify(reviews["s" + current] || null) + "|" + current + "|" + canWrite;
+      renderProgress(); renderRail();
+      if (sig !== lastSig) renderMain();
+      resolveNames();
+    }, function () { showBanner("Live saving stopped. Reload the page to reconnect."); });
+    renderAll();
+  });
+})();
+</script>
